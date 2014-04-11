@@ -2,6 +2,7 @@ import collections
 import gssapi
 import socket
 import struct
+import sys
 
 __all__ = ('remctl', 'Remctl', 'RemctlError', 'RemctlNotOpenedError', 'RemctlProtocolError',
            'RemctlSimpleResult')

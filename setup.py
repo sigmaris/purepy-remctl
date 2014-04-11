@@ -9,7 +9,7 @@ except ImportError:
 
 setup(
     name='purepy-remctl',
-    version='0.0.2',
+    version='0.0.3',
     description='Pure Python implementation of the remctl protocol',
     author='Hugh Cole-Baker',
     author_email="hugh@sigmaris.info",
