@@ -45,7 +45,7 @@ RemctlSimpleResult = collections.namedtuple('RemctlSimpleResult', ['stdout', 'st
 
 
 def _packet_generator(sock):
-    data = ''
+    data = b''
     while True:
         # Read the type and length header
         while len(data) < 5:
@@ -56,7 +56,7 @@ def _packet_generator(sock):
             data += bits
         flags, length = struct.unpack('!BI', data)
         # Read the data itself
-        data = ''
+        data = b''
         while len(data) < length:
             bits = sock.recv(length - len(data))
             if len(bits) == 0:
@@ -65,7 +65,17 @@ def _packet_generator(sock):
             data += bits
         # Now we have a full packet, yield it
         yield (flags, data)
-        data = ''
+        data = b''
+
+
+def _encode_text(txt):
+    if (
+        (sys.version_info < (3, 0) and isinstance(txt, unicode))
+        or (sys.version_info >= (3, 0) and isinstance(txt, str))
+    ):
+        return txt.encode()
+    else:
+        return txt
 
 
 def remctl(host, port=4373, principal=None, command=None):
@@ -278,7 +288,7 @@ class Remctl(object):
         try:
             self.sock.sendall(self._build_pkt(
                 flags=(TOKEN_DATA | TOKEN_PROTOCOL),
-                data=self._build_msg(MESSAGE_QUIT, '')
+                data=self._build_msg(MESSAGE_QUIT, b'')
             ))
         except:
             pass
@@ -300,10 +310,11 @@ class Remctl(object):
         argdata = b''
         argc = len(args)
         for arg in args:
-            if len(argdata) + 4 + len(arg) > MESSAGE_SIZE_LIMIT:
+            bytearg = _encode_text(arg)
+            if len(argdata) + 4 + len(bytearg) > MESSAGE_SIZE_LIMIT:
                 arg_segments.append(argdata)
-                argdata = ''
-            argdata += (struct.pack('!I', len(arg)) + arg)
+                argdata = b''
+            argdata += (struct.pack('!I', len(bytearg)) + bytearg)
         arg_segments.append(argdata)
         if len(arg_segments) == 1:
             header = struct.pack('!BBI', ka_flag, 0, argc)
