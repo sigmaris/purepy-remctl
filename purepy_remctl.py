@@ -167,7 +167,7 @@ class Remctl(object):
 
         sock.sendall(self._build_pkt(
             flags=(TOKEN_NOOP | TOKEN_CONTEXT_NEXT | TOKEN_PROTOCOL),
-            data='', wrap=False
+            data=b'', wrap=False
         ))
 
         ctx_args = [gss_name]
