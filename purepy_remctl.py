@@ -273,7 +273,7 @@ class Remctl(object):
             raise RemctlNotOpenedError("Connection is not open.")
         self.sock.sendall(self._build_pkt(
             flags=(TOKEN_DATA | TOKEN_PROTOCOL),
-            data=self._build_msg(MESSAGE_NOOP, '')
+            data=self._build_msg(MESSAGE_NOOP, b'')
         ))
         try:
             flags, in_token = next(self.receiver)
