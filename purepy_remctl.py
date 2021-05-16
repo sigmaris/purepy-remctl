@@ -84,8 +84,8 @@ def remctl(host, port=4373, principal=None, command=None):
     if command is None:
         raise TypeError("The command argument must be provided.")
 
-    stdout = ''
-    stderr = ''
+    stdout = b''
+    stderr = b''
     status = None
     try:
         r = Remctl(host, port, principal)
