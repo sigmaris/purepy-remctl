@@ -132,14 +132,14 @@ class Remctl(object):
             self.open(host, port, principal)
 
     def set_credential(self, credential):
-        if not isinstance(credential, gssapi.Credential):
+        if not isinstance(credential, gssapi.Credentials):
             raise TypeError(
-                "credential must be a gssapi.Credential, not {0}.".format(type(credential))
+                "credential must be a gssapi.Credentials object, not {0}.".format(type(credential))
             )
         usage = credential.usage
-        if usage != gssapi.C_INITIATE and usage != gssapi.C_BOTH:
-            raise ValueError("credential has incorrect usage, it should be either gssapi.C_INITIATE"
-                             "or gssapi.C_BOTH.")
+        if usage != 'initiate' and usage != 'both':
+            raise ValueError("credential has incorrect usage, it should be either 'initiate'"
+                                "or 'both'.")
         self.credential = credential
 
     def set_source_ip(self, source):
@@ -152,11 +152,11 @@ class Remctl(object):
 
     def open(self, host, port=4373, principal=None):
         if principal is None:
-            gss_name = gssapi.Name('host@' + host, gssapi.C_NT_HOSTBASED_SERVICE)
+            gss_name = gssapi.Name('host@' + host, gssapi.NameType.hostbased_service)
         elif isinstance(principal, gssapi.Name):
             gss_name = principal
         else:
-            gss_name = gssapi.Name(principal, gssapi.C_NT_HOSTBASED_SERVICE)
+            gss_name = gssapi.Name(principal, gssapi.NameType.hostbased_service)
 
         args = [(host, port)]
         if self.timeout != 0:
@@ -170,17 +170,20 @@ class Remctl(object):
             data=b'', wrap=False
         ))
 
-        ctx_args = [gss_name]
+        ctx_args = {"name": gss_name}
         if self.credential is not None:
-            ctx_args.append(self.credential)
-        ctx = gssapi.InitContext(*ctx_args, req_flags=(
-            gssapi.C_MUTUAL_FLAG, gssapi.C_CONF_FLAG, gssapi.C_INTEG_FLAG,
-            gssapi.C_REPLAY_FLAG, gssapi.C_SEQUENCE_FLAG
+            ctx_args['creds'] = self.credential
+        ctx = gssapi.SecurityContext(**ctx_args, usage='initiate', flags=(
+            gssapi.RequirementFlag.mutual_authentication,
+            gssapi.RequirementFlag.confidentiality,
+            gssapi.RequirementFlag.integrity,
+            gssapi.RequirementFlag.replay_detection,
+            gssapi.RequirementFlag.out_of_sequence_detection
         ))
         in_token = None
         receiver = _packet_generator(sock)
         out_token = ctx.step()
-        while not ctx.established:
+        while not ctx.complete:
             sock.sendall(self._build_pkt(
                 flags=(TOKEN_CONTEXT | TOKEN_PROTOCOL),
                 data=out_token, wrap=False
@@ -202,13 +205,13 @@ class Remctl(object):
                 flags=(TOKEN_CONTEXT | TOKEN_PROTOCOL),
                 data=out_token, wrap=False
             ))
-        if not ctx.mutual_auth_negotiated:
+        if not (ctx.actual_flags & gssapi.RequirementFlag.mutual_authentication):
             sock.close()
             raise RemctlError("Could not negotiate mutual authentication")
-        if not ctx.integrity_negotiated:
+        if not (ctx.actual_flags & gssapi.RequirementFlag.integrity):
             sock.close()
             raise RemctlError("Could not negotiate integrity protection")
-        if not ctx.confidentiality_negotiated:
+        if not (ctx.actual_flags & gssapi.RequirementFlag.confidentiality):
             sock.close()
             raise RemctlError("Could not negotiate confidentiality protection")
         # otherwise, everything is fine, continue:
@@ -239,7 +242,7 @@ class Remctl(object):
             except StopIteration:
                 self.close()
                 raise RemctlError("Network error: Server closed connection.")
-            message = self.ctx.unwrap(in_token)
+            message = self.ctx.decrypt(in_token)
             protocol_version, msg_type = struct.unpack('!BB', message[:2])
             data = message[2:]
             if protocol_version < 2:
@@ -280,7 +283,7 @@ class Remctl(object):
         except StopIteration:
             self.close()
             raise RemctlError("Network error: Server closed connection.")
-        message = self.ctx.unwrap(in_token)
+        message = self.ctx.decrypt(in_token)
         protocol_version, msg_type = struct.unpack('!BB', message[:2])
         if protocol_version != 3 or msg_type != MESSAGE_NOOP:
             raise RemctlError("Server does not support noop.")
@@ -299,10 +302,7 @@ class Remctl(object):
             pass
         self.sock = None
         self.receiver = None
-        try:
-            self.ctx.delete()
-        except:
-            pass
+        del self.ctx
         self.ctx = None
 
     def _build_command_data(self, args, keepalive=True):
@@ -337,5 +337,5 @@ class Remctl(object):
 
     def _build_pkt(self, flags, data, wrap=True):
         if wrap:
-            data = self.ctx.wrap(data, conf_req=True)
+            data = self.ctx.encrypt(data)
         return struct.pack('!BI', flags, len(data)) + data
