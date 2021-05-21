@@ -1,4 +1,4 @@
-    from setuptools import setup
+from setuptools import setup
 
 setup(
     name='purepy-remctl',
@@ -10,5 +10,12 @@ setup(
     install_requires=[
         'python-gssapi>=0.4.1',
     ],
+    extras_require={
+        "dev": [
+            "k5test ~= 0.9.2",
+            "pytest ~= 6.2",
+            "pytest-cov ~= 2.11.1",
+        ],
+    },
     py_modules=['purepy_remctl'],
 )
