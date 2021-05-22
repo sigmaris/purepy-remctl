@@ -8,7 +8,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='purepy-remctl',
-    version='0.0.5',
+    version='0.1.0',
     description='Pure Python implementation of the remctl protocol',
     author='Hugh Cole-Baker',
     author_email="hugh@sigmaris.info",
