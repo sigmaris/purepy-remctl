@@ -1,4 +1,10 @@
+import os.path
+
 from setuptools import setup
+
+this_directory = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='purepy-remctl',
@@ -7,6 +13,8 @@ setup(
     author='Hugh Cole-Baker',
     author_email="hugh@sigmaris.info",
     url="https://github.com/sigmaris/purepy-remctl",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     install_requires=[
         'gssapi>=1.2.0',
     ],
